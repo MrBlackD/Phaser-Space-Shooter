@@ -15,9 +15,12 @@ var playState={
 		bullets.setAll('anchor.y', 0.5);
 		bullets.setAll('outOfBoundsKill', true);
 		bullets.setAll('checkWorldBounds', true);
-		bullets.setAll('scale.x',0.25);
-		bullets.setAll('scale.y',0.25);
-
+		bullet = bullets.getFirstExists(false);
+		bullets.setAll('width',bullet.width*0.25);
+		bullets.setAll('height',bullet.height*0.25);
+		bullet = bullets.getFirstExists(false);
+		bullets.setAll('body.width',bullet.width);
+		bullets.setAll('body.height',bullet.height);
 		asteroids = game.add.group();
 		/*
 		enemy=game.add.sprite(game.world.centerX,game.world.centerY,'enemy1');
@@ -39,11 +42,19 @@ var playState={
 		}
 
 		player=game.add.sprite(game.world.centerX,game.world.height+100,'player');
-		game.physics.enable(player, Phaser.Physics.ARCADE);
+		
 		player.anchor.x=0.5;
 		player.anchor.y=0.5;
 		player.angle=-90;
-		player.scale.setTo(0.05,0.05);
+		player.height*=0.05;
+		player.width*=0.05;
+		game.physics.enable(player, Phaser.Physics.ARCADE);
+		//player.scale.setTo(0.05,0.05);
+		player.body.width=player.height;
+		player.body.height=player.width;
+		
+		
+		//player.body.updateBounds(player.scale.x, player.scale.y);
 		player.stats={
 			speed:200,
 			bulletTime:0,
@@ -71,10 +82,12 @@ var playState={
 		}else{
 			player.body.velocity.setTo(0, 0);
 		}
+		game.physics.arcade.overlap(asteroids, bullets,asteroidsDestroy);
+		game.physics.arcade.overlap(asteroids, player,playerDestroy);
 	},
 	render:function(){
 		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");  
-		
+
 	}
 
 		
@@ -153,10 +166,49 @@ function asteroid_init(child){
 		x=game.world.randomY;
 	}
 	scale=game.rnd.integerInRange(20, 50)
-	child.scale.setTo(scale/100,scale/100);
+	//child.scale.setTo(scale/100,scale/100);
+	child.width*=scale/100;
+	child.height*=scale/100;
+	child.body.width=child.width;
+	child.body.height=child.height;
 	child.reset(x,y);
 	child.animations.add('fly');
 	child.animations.play('fly', 25, true);
 
 	game.physics.arcade.moveToXY(child,game.world.randomX,game.world.randomY,game.rnd.integerInRange(50, 400));
+}
+
+function asteroidsDestroy(asteroid,bullet){
+	
+	if(asteroid.width>30){
+		ast=game.add.sprite(asteroid.x+game.rnd.integerInRange(-5, 5),asteroid.y+game.rnd.integerInRange(-5, 5),'asteroid');
+		game.physics.enable(ast, Phaser.Physics.ARCADE);
+		ast.width=asteroid.width/2;
+		ast.height=asteroid.height/2;
+		ast.body.width=asteroid.width/2;
+		ast.body.height=asteroid.height/2;
+		ast.animations.add('fly');
+		ast.animations.play('fly', 25, true);
+		game.physics.arcade.moveToXY(ast,game.world.randomX,game.world.randomY,game.rnd.integerInRange(50, 400));
+		asteroids.add(ast);
+
+		ast=game.add.sprite(asteroid.x+game.rnd.integerInRange(-5, 5),asteroid.y+game.rnd.integerInRange(-5, 5),'asteroid');
+		game.physics.enable(ast, Phaser.Physics.ARCADE);
+		ast.width=asteroid.width/2;
+		ast.height=asteroid.height/2;
+		ast.body.width=asteroid.width/2;
+		ast.body.height=asteroid.height/2;
+		ast.animations.add('fly');
+		ast.animations.play('fly', 25, true);
+		game.physics.arcade.moveToXY(ast,game.world.randomX,game.world.randomY,game.rnd.integerInRange(50, 400));
+		asteroids.add(ast);
+
+	}
+	asteroid.kill();
+	bullet.kill();
+}
+
+function playerDestroy(asteroid,player){
+	asteroid.kill();
+	player.kill();
 }
