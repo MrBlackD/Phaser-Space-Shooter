@@ -22,6 +22,7 @@ var playState={
 		bullets.setAll('body.width',bullet.width);
 		bullets.setAll('body.height',bullet.height);
 		asteroids = game.add.group();
+		enemies=game.add.group();
 		/*
 		enemy=game.add.sprite(game.world.centerX,game.world.centerY,'enemy1');
 		enemy.angle=180
@@ -36,6 +37,26 @@ var playState={
 		asteroid.outOfBoundsKill=true;
 		asteroid.checkWorldBounds=true;
 		*/
+
+		target=game.rnd.integerInRange(0, 1);
+		soundIndex=game.rnd.integerInRange(0, sounds.length-1);
+		sounds[soundIndex].play();
+		targetText=game.add.text(game.world.centerX,game.world.centerY,' ',{font:'50px Courier bold',fill:'#ffffff'});
+		game.add.tween(targetText).to({x:game.world.width/2,y:0,fontSize:30}, 2000).start();
+		if(target==0){
+			targetText.text='Survive for ';
+			targetText.anchor.setTo(0.5,0);
+			timeToSurvive=Math.floor(sounds[soundIndex].duration);
+			targetText.text+=timeToSurvive;
+			setInterval(function(){
+				timeToSurvive--;
+			},1000);
+		}
+		if(target==1){
+			targetText.text='Remaining kills ';
+			targetText.anchor.setTo(0.5,0);
+			neededKills=20;
+		}
 		gameinfo={
 			stage:1,
 
@@ -74,6 +95,10 @@ var playState={
 	update:function(){
 		starfield.tilePosition.y += 4;
 		fire();
+		if(target==0&&timeToSurvive>0)
+			targetText.text='Survive for '+timeToSurvive;
+		if(target==1&&neededKills>0)
+			targetText.text='Kill '+neededKills;
 		if(game.input.activePointer.isDown){
 			game.physics.arcade.moveToPointer(player, player.stats.speed);
 			if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y)){
@@ -165,7 +190,7 @@ function asteroid_init(child){
 		y=game.world.height+10*game.rnd.integerInRange(1,10);
 		x=game.world.randomY;
 	}
-	scale=game.rnd.integerInRange(20, 50)
+	scale=game.rnd.integerInRange(25, 50)
 	//child.scale.setTo(scale/100,scale/100);
 	child.width*=scale/100;
 	child.height*=scale/100;
