@@ -6,8 +6,10 @@ var loadState={
 		game.load.image('starfield', 'assets/starfield.jpg');
 		game.load.image('player', 'assets/player.png');
 		game.load.image('bullet', 'assets/bullet.png');
+		game.load.image('enemy1', 'assets/enemy1.png');
 		game.load.audio('shot', 'assets/shot2.wav');
 		game.load.audio('menuMusic', 'assets/menu.mp3');
+		game.load.spritesheet('asteroid', 'assets/asteroid.png', 128, 128, 64);
 	},
 	create:function(){
 		shot=game.add.audio('shot');
