@@ -11,6 +11,7 @@ var loadState={
 		game.load.audio('menuMusic', 'assets/menu.mp3');
 		game.load.audio('sound1', 'assets/sound1.mp3');
 		game.load.spritesheet('explosion', 'assets/explosion.png', 100, 100, 64);
+		//game.load.spritesheet('fire', 'assets/fire.png', 128, 128, 8);
 		game.load.spritesheet('asteroid', 'assets/asteroid.png', 128, 128, 30);
 	},
 	create:function(){

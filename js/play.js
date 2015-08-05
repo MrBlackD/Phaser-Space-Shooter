@@ -23,7 +23,6 @@ var playState={
 		bullets.setAll('body.height',bullet.height);
 		asteroids = game.add.group();
 		enemies=game.add.group();
-		
 
 		target=game.rnd.integerInRange(0, 1);
 		soundIndex=game.rnd.integerInRange(0, sounds.length-1);
@@ -72,7 +71,7 @@ var playState={
 			damage:1
 		}
 		game.add.tween(player).to({x:game.world.centerX,y:game.world.centerY}, 1000).start();
-		spawn_enemy(0);
+		spawn_enemy(5000);
 		timer = game.time.create(false);
 		timer.add(10000,function(){
 			spawn_asteroids();
@@ -99,7 +98,7 @@ var playState={
 		//game.physics.arcade.collide(asteroids, asteroids);
 		game.physics.arcade.overlap(player, asteroids,destroy);
 		game.physics.arcade.overlap(player, enemies,destroy);
-
+		//enemies.forEach();
 	},
 	render:function(){
 		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");  
@@ -233,52 +232,64 @@ function destroy(object,destroyer){
 
 function spawn_enemy(delay){
 	timer = game.time.create(false);
-		timer.add(delay,function(){
-			count=10;
-			enemyNum=game.rnd.integerInRange(0, enemyList.length-1);
-			enemies.enableBody = true;
-			enemies.physicsBodyType = Phaser.Physics.ARCADE;
-			enemies.createMultiple(count, enemyList[enemyNum]);
-			enemies.setAll('anchor.x', 0.5);
-			enemies.setAll('anchor.y', 0.5);
-			enemies.setAll('checkWorldBounds', false);
-			enemies.setAll('outOfBoundsKill', false);
-			enemies.setAll('scale.x',0.3);
-			enemies.setAll('scale.y',0.3);
-			enemies.setAll('angle',180);
-			enemies.setAll('health',3+enemyNum);
-			enemy = enemies.getFirstExists(false);
-			enemies.setAll('body.width',enemy.width);
-			enemies.setAll('body.height',enemy.height);
-			tactic=enemyTactics[game.rnd.integerInRange(0, enemyTactics.length-1)];
-			if(tactic=='sync'){
-				attackTime=game.time.create(false);
+	count=10;
+	timer.add(delay,function(){
+		enemyNum=game.rnd.integerInRange(0, enemyList.length-1);
+		enemies.enableBody = true;
+		enemies.physicsBodyType = Phaser.Physics.ARCADE;
+		enemies.createMultiple(count, enemyList[enemyNum]);
+		enemies.setAll('anchor.x', 0.5);
+		enemies.setAll('anchor.y', 0.5);
+		enemies.setAll('checkWorldBounds', false);
+		enemies.setAll('outOfBoundsKill', false);
+		enemies.setAll('scale.x',0.3);
+		enemies.setAll('scale.y',0.3);
+		enemies.setAll('angle',180);
+		enemies.setAll('health',3+enemyNum);
+		enemy = enemies.getFirstExists(false);
+		enemies.setAll('body.width',enemy.width);
+		enemies.setAll('body.height',enemy.height);
+		tactic=enemyTactics[game.rnd.integerInRange(0, enemyTactics.length-1)];
 
-				for(var i=0;i<count;i++){
-					en=enemies.getFirstDead(false);
-					en.reset((i+0.5)*game.world.width/count,-100);
-					game.add.tween(en).to({y:100}, 2000).start();
-				}
-				attackTime.add(3000,function(){
-					enemies.forEach(sync_move,this,false);
-				},this);
-				attackTime.start();
-			}
-			if(tactic=='flood'){
-				attackTime=game.time.create(false);
+		if(tactic=='sync'){
+			console.log('sync');
+			attackTime=game.time.create(false);
 
-				for(var i=0;i<count;i++){
-					en=enemies.getFirstDead(false);
-					en.reset((i+0.5)*game.world.width/count,-100);
-					game.add.tween(en).to({y:100}, 2000).start();					
-				}
-				attackTime.add(3000,function(){
-					enemies.forEach(sync_move,this,false);
-				},this);
-				attackTime.start();
+			for(var i=0;i<count;i++){
+				en=enemies.getFirstDead(false);
+				en.reset((i+0.5)*game.world.width/count,-100);
+
+				game.add.tween(en).to({y:100}, 2000).start();
 			}
-		},this);
-		timer.start();
+			attackTime.add(3000,function(){
+				enemies.forEach(sync_move,this,false);
+			},this);
+			attackTime.add(7000,function(){
+				spawn_enemy(0);
+				enemies.removeAll(true);
+			},this);
+
+			attackTime.start();
+		}
+		if(tactic=='flood'){
+			console.log('flood');
+			attackTime=game.time.create(false);
+			for(var i=0;i<count;i++){
+				en=enemies.getFirstDead(false);
+				en.reset(game.world.randomX,-(i+game.rnd.integerInRange(1,3))*300);
+					
+			}
+			attackTime.add(1000,function(){
+				enemies.forEach(sync_move,this,false);
+			},this);
+			attackTime.add(10000,function(){
+				spawn_enemy(0);
+				enemies.removeAll(true);
+			},this);
+			attackTime.start();
+		}
+	},this);
+	timer.start();
 
 
 }
