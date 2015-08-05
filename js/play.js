@@ -23,20 +23,7 @@ var playState={
 		bullets.setAll('body.height',bullet.height);
 		asteroids = game.add.group();
 		enemies=game.add.group();
-		/*
-		enemy=game.add.sprite(game.world.centerX,game.world.centerY,'enemy1');
-		enemy.angle=180
 		
-		
-		asteroid=game.add.sprite(game.world.randomX,game.world.randomY,'asteroid');
-		asteroid.scale.setTo(0.5,0.5);
-		asteroid.animations.add('fly');
-		asteroid.animations.play('fly', 25, true);
-		game.physics.enable(asteroid, Phaser.Physics.ARCADE);
-		game.physics.arcade.moveToXY(asteroid,game.world.randomX,game.world.randomY,game.rnd.integerInRange(50, 400));
-		asteroid.outOfBoundsKill=true;
-		asteroid.checkWorldBounds=true;
-		*/
 
 		target=game.rnd.integerInRange(0, 1);
 		soundIndex=game.rnd.integerInRange(0, sounds.length-1);
@@ -70,12 +57,12 @@ var playState={
 		player.height*=0.05;
 		player.width*=0.05;
 		game.physics.enable(player, Phaser.Physics.ARCADE);
-		//player.scale.setTo(0.05,0.05);
+
 		player.body.width=player.height;
 		player.body.height=player.width;
 		
 		
-		//player.body.updateBounds(player.scale.x, player.scale.y);
+
 		player.stats={
 			speed:200,
 			bulletTime:0,
@@ -85,12 +72,13 @@ var playState={
 			damage:1
 		}
 		game.add.tween(player).to({x:game.world.centerX,y:game.world.centerY}, 1000).start();
-
+		spawn_enemy(0);
 		timer = game.time.create(false);
 		timer.add(10000,function(){
 			spawn_asteroids();
 		},this);
 		timer.start();
+
 	},
 	update:function(){
 		starfield.tilePosition.y += 4;
@@ -98,7 +86,7 @@ var playState={
 		if(target==0&&timeToSurvive>0)
 			targetText.text='Survive for '+timeToSurvive;
 		if(target==1&&neededKills>0)
-			targetText.text='Kill '+neededKills;
+			targetText.text='Remaining kills '+neededKills;
 		if(game.input.activePointer.isDown){
 			game.physics.arcade.moveToPointer(player, player.stats.speed);
 			if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y)){
@@ -108,7 +96,10 @@ var playState={
 			player.body.velocity.setTo(0, 0);
 		}
 		game.physics.arcade.overlap(asteroids, bullets,asteroidsDestroy);
-		game.physics.arcade.overlap(asteroids, player,playerDestroy);
+		//game.physics.arcade.collide(asteroids, asteroids);
+		game.physics.arcade.overlap(player, asteroids,destroy);
+		game.physics.arcade.overlap(player, enemies,destroy);
+
 	},
 	render:function(){
 		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");  
@@ -127,7 +118,7 @@ function fire() {
 
 		//  Grab the first bullet we can from the pool
 
-		bullet = bullets.getFirstExists(false);
+		bullet = bullets.getFirstExists(false); 
 
 		if (bullet)
 		{
@@ -146,7 +137,6 @@ function spawn_asteroids(){
 
 	num=game.rnd.integerInRange(0+gameinfo.stage, 5+gameinfo.stage);
 	if(num!=0){
-		console.log(num);
 		asteroids.enableBody = true;
 		asteroids.physicsBodyType = Phaser.Physics.ARCADE;
 		asteroids.createMultiple(num, 'asteroid');
@@ -190,7 +180,7 @@ function asteroid_init(child){
 		y=game.world.height+10*game.rnd.integerInRange(1,10);
 		x=game.world.randomY;
 	}
-	scale=game.rnd.integerInRange(25, 50)
+	scale=game.rnd.integerInRange(30, 50)
 	//child.scale.setTo(scale/100,scale/100);
 	child.width*=scale/100;
 	child.height*=scale/100;
@@ -205,7 +195,7 @@ function asteroid_init(child){
 
 function asteroidsDestroy(asteroid,bullet){
 	
-	if(asteroid.width>30){
+	if(asteroid.width>40){
 		ast=game.add.sprite(asteroid.x+game.rnd.integerInRange(-5, 5),asteroid.y+game.rnd.integerInRange(-5, 5),'asteroid');
 		game.physics.enable(ast, Phaser.Physics.ARCADE);
 		ast.width=asteroid.width/2;
@@ -229,11 +219,86 @@ function asteroidsDestroy(asteroid,bullet){
 		asteroids.add(ast);
 
 	}
+	explode(asteroid.x,asteroid.y);
 	asteroid.kill();
 	bullet.kill();
 }
 
-function playerDestroy(asteroid,player){
-	asteroid.kill();
-	player.kill();
+function destroy(object,destroyer){
+	explode(object.x,object.y);
+	if(destroyer)
+		destroyer.kill();
+	object.kill();
+}
+
+function spawn_enemy(delay){
+	timer = game.time.create(false);
+		timer.add(delay,function(){
+			count=10;
+			enemyNum=game.rnd.integerInRange(0, enemyList.length-1);
+			enemies.enableBody = true;
+			enemies.physicsBodyType = Phaser.Physics.ARCADE;
+			enemies.createMultiple(count, enemyList[enemyNum]);
+			enemies.setAll('anchor.x', 0.5);
+			enemies.setAll('anchor.y', 0.5);
+			enemies.setAll('checkWorldBounds', false);
+			enemies.setAll('outOfBoundsKill', false);
+			enemies.setAll('scale.x',0.3);
+			enemies.setAll('scale.y',0.3);
+			enemies.setAll('angle',180);
+			enemies.setAll('health',3+enemyNum);
+			enemy = enemies.getFirstExists(false);
+			enemies.setAll('body.width',enemy.width);
+			enemies.setAll('body.height',enemy.height);
+			tactic=enemyTactics[game.rnd.integerInRange(0, enemyTactics.length-1)];
+			if(tactic=='sync'){
+				attackTime=game.time.create(false);
+
+				for(var i=0;i<count;i++){
+					en=enemies.getFirstDead(false);
+					en.reset((i+0.5)*game.world.width/count,-100);
+					game.add.tween(en).to({y:100}, 2000).start();
+				}
+				attackTime.add(3000,function(){
+					enemies.forEach(sync_move,this,false);
+				},this);
+				attackTime.start();
+			}
+			if(tactic=='flood'){
+				attackTime=game.time.create(false);
+
+				for(var i=0;i<count;i++){
+					en=enemies.getFirstDead(false);
+					en.reset((i+0.5)*game.world.width/count,-100);
+					game.add.tween(en).to({y:100}, 2000).start();					
+				}
+				attackTime.add(3000,function(){
+					enemies.forEach(sync_move,this,false);
+				},this);
+				attackTime.start();
+			}
+		},this);
+		timer.start();
+
+
+}
+
+function sync_move(en){
+	game.physics.arcade.moveToXY(en,en.x,game.world.height+100,500);
+}
+
+function win(){
+
+}
+
+function lose(){
+
+}
+
+function explode(x,y){
+	explosion=game.add.sprite(x,y,'explosion');
+	explosion.anchor.x=0.5;
+	explosion.anchor.y=0.5;
+	explosion.animations.add('explode');
+	explosion.animations.play('explode', 20, false);
 }

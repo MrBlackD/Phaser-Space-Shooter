@@ -10,7 +10,8 @@ var loadState={
 		game.load.audio('shot', 'assets/shot2.wav');
 		game.load.audio('menuMusic', 'assets/menu.mp3');
 		game.load.audio('sound1', 'assets/sound1.mp3');
-		game.load.spritesheet('asteroid', 'assets/asteroid.png', 128, 128, 64);
+		game.load.spritesheet('explosion', 'assets/explosion.png', 100, 100, 64);
+		game.load.spritesheet('asteroid', 'assets/asteroid.png', 128, 128, 30);
 	},
 	create:function(){
 		shot=game.add.audio('shot');
@@ -20,6 +21,13 @@ var loadState={
 		sounds=[];
 		sound=game.add.audio('sound1');
 		sounds.push(sound);
+
+		enemyList=[];
+		enemyList.push('enemy1');
+
+		enemyTactics=[];
+		enemyTactics.push('sync');
+		enemyTactics.push('flood');
 	},
 	update:function(){
 		if(shot.isDecoded&&menuMusic.isDecoded&&soundReady(sounds)){
