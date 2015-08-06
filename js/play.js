@@ -6,7 +6,6 @@ var playState={
 		starfield.tilePosition.y=game.global.tilePositionY;
 
 
-
 		bullets = game.add.group();
 		bullets.enableBody = true;
 		bullets.physicsBodyType = Phaser.Physics.ARCADE;
@@ -16,10 +15,10 @@ var playState={
 		bullets.setAll('outOfBoundsKill', true);
 		bullets.setAll('checkWorldBounds', true);
 		bullet = bullets.getFirstExists(false);
-		bullets.setAll('width',bullet.width*0.25);
-		bullets.setAll('height',bullet.height*0.25);
+		bullets.setAll('width',bullet.width*0.2);
+		bullets.setAll('height',bullet.height*0.20);
 		bullet = bullets.getFirstExists(false);
-		bullets.setAll('body.width',bullet.width);
+		bullets.setAll('body.width',bullet.width/2);
 		bullets.setAll('body.height',bullet.height);
 		asteroids = game.add.group();
 		enemies=game.add.group();
@@ -34,18 +33,24 @@ var playState={
 			targetText.anchor.setTo(0.5,0);
 			timeToSurvive=Math.floor(sounds[soundIndex].duration);
 			targetText.text+=timeToSurvive;
-			setInterval(function(){
+			timeInterval=setInterval(function(){
+				if(timeToSurvive<=0){
+					clearInterval(timeInterval);
+					if(player.alive)
+						win();
+				}
 				timeToSurvive--;
 			},1000);
 		}
 		if(target==1){
 			targetText.text='Remaining kills ';
 			targetText.anchor.setTo(0.5,0);
-			neededKills=20;
+			neededKills=50;
 		}
 		gameinfo={
 			stage:1,
-
+			scrollSpd:4,
+			status:'inProgress'
 		}
 
 		player=game.add.sprite(game.world.centerX,game.world.height+100,'player');
@@ -80,11 +85,11 @@ var playState={
 
 	},
 	update:function(){
-		starfield.tilePosition.y += 4;
+		starfield.tilePosition.y += gameinfo.scrollSpd;
 		fire();
-		if(target==0&&timeToSurvive>0)
+		if(target==0&&timeToSurvive>=0)
 			targetText.text='Survive for '+timeToSurvive;
-		if(target==1&&neededKills>0)
+		if(target==1&&neededKills>=0)
 			targetText.text='Remaining kills '+neededKills;
 		if(game.input.activePointer.isDown){
 			game.physics.arcade.moveToPointer(player, player.stats.speed);
@@ -98,18 +103,39 @@ var playState={
 		//game.physics.arcade.collide(asteroids, asteroids);
 		game.physics.arcade.overlap(player, asteroids,destroy);
 		game.physics.arcade.overlap(player, enemies,destroy);
-		//enemies.forEach();
+		game.physics.arcade.overlap(enemies, bullets,dmg);
 	},
 	render:function(){
-		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");  
+		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00"); 
+		//game.debug.body(player);
+		//enemies.forEach(debugOn,this,false);
+		//asteroids.forEach(debugOn,this,false);
+		//bullets.forEach(debugOn,this,false);
 
 	}
 
 		
 }
 
+function dmg(damageTaker,damageDealer){
+	explode(damageDealer.x,damageDealer.y,'small');
+	if(damageTaker.health==1){
+		explode(game.rnd.integerInRange(damageTaker.x-damageTaker.width/2, damageTaker.x+damageTaker.width/2),game.rnd.integerInRange(damageTaker.y-damageTaker.height/2, damageTaker.y+damageTaker.height/2),'big');
+		
+		if(target==1){
+			neededKills--;
+			if(neededKills==0){
+				win();
+			}
+		}
+	}
+
+	damageTaker.damage(1);
+	damageDealer.kill();
+}
+
 function fire() {
-	if(!player.alive)
+	if(!player.alive||gameinfo.status=='end')
 		return;
 	//  To avoid them being allowed to fire too fast we set a time limit
 	if (game.time.now > player.stats.bulletTime)
@@ -133,7 +159,8 @@ function fire() {
 }
 
 function spawn_asteroids(){
-
+	if(gameinfo.status=='end')
+		return;
 	num=game.rnd.integerInRange(0+gameinfo.stage, 5+gameinfo.stage);
 	if(num!=0){
 		asteroids.enableBody = true;
@@ -227,10 +254,14 @@ function destroy(object,destroyer){
 	explode(object.x,object.y);
 	if(destroyer)
 		destroyer.kill();
+	if(object==player)
+		lose();
 	object.kill();
 }
 
 function spawn_enemy(delay){
+	if(gameinfo.status=='end')
+		return;
 	timer = game.time.create(false);
 	count=10;
 	timer.add(delay,function(){
@@ -245,10 +276,10 @@ function spawn_enemy(delay){
 		enemies.setAll('scale.x',0.3);
 		enemies.setAll('scale.y',0.3);
 		enemies.setAll('angle',180);
-		enemies.setAll('health',3+enemyNum);
+		enemies.setAll('health',3);//+enemyNum
 		enemy = enemies.getFirstExists(false);
-		enemies.setAll('body.width',enemy.width);
-		enemies.setAll('body.height',enemy.height);
+		enemies.setAll('body.width',enemy.width*0.8);
+		enemies.setAll('body.height',enemy.height*0.8);
 		tactic=enemyTactics[game.rnd.integerInRange(0, enemyTactics.length-1)];
 
 		if(tactic=='sync'){
@@ -257,7 +288,7 @@ function spawn_enemy(delay){
 
 			for(var i=0;i<count;i++){
 				en=enemies.getFirstDead(false);
-				en.reset((i+0.5)*game.world.width/count,-100);
+				en.reset((i+0.5)*game.world.width/count,-100,en.health);
 
 				game.add.tween(en).to({y:100}, 2000).start();
 			}
@@ -276,7 +307,7 @@ function spawn_enemy(delay){
 			attackTime=game.time.create(false);
 			for(var i=0;i<count;i++){
 				en=enemies.getFirstDead(false);
-				en.reset(game.world.randomX,-(i+game.rnd.integerInRange(1,3))*300);
+				en.reset(game.world.randomX,-(i+game.rnd.integerInRange(1,3))*300,en.health);
 					
 			}
 			attackTime.add(1000,function(){
@@ -299,17 +330,73 @@ function sync_move(en){
 }
 
 function win(){
+	gameinfo.status='end';
+	enemies.forEach(destroy,this,false);
+	asteroids.forEach(destroy,this,false);
+	game.add.tween(gameinfo).to({scrollSpd:20}, 1000).start();
+	timer = game.time.create(false);
+	timer.add(0,function(){
+		game.add.tween(targetText).to({y:-100}, 2000).start();
+	},this);
+	timer.add(1000,function(){
+		game.add.tween(player).to({x:player.x,y:-100}, 1000).start();
+	},this);
+	timer.add(2000,function(){
+		winText=game.add.text(game.world.centerX,game.world.centerY,'DONE!',{font:'70px Courier bold',fill:'#ffffff'});
+		winText.anchor.x=0.5;
+		winText.anchor.y=0.5;
+		winText.alpha=0;
+		game.add.tween(winText).to({alpha:1,fontSize:40}, 2000).start();
+	},this);
 
+	timer.add(5000,function(){
+		sounds[soundIndex].stop();
+		gameinfo.scrollSpd=4;
+		game.state.start('end');
+	},this);
+	timer.start();
 }
 
 function lose(){
-
+	gameinfo.status='end';
+	timer = game.time.create(false);
+	timer.add(0,function(){
+		game.add.tween(targetText).to({y:-100}, 2000).start();
+	},this);
+	timer.add(1000,function(){
+		loseText=game.add.text(game.world.centerX,game.world.centerY,'You are LOST!',{font:'40px Courier bold',fill:'#ffffff'});
+		loseText.anchor.x=0.5;
+		loseText.anchor.y=0.5;
+		loseText.alpha=0;
+		game.add.tween(loseText).to({alpha:1,fontSize:40}, 2000).start();
+		
+	},this);
+	timer.add(5000,function(){
+		sounds[soundIndex].stop();
+		game.state.start('end');
+	},this);
+	timer.start();
 }
 
-function explode(x,y){
+function explode(x,y,size){
+	frameRate=20;
 	explosion=game.add.sprite(x,y,'explosion');
 	explosion.anchor.x=0.5;
 	explosion.anchor.y=0.5;
+	if(size=='small'){
+		explosion.scale.x=0.5;
+		explosion.scale.y=0.5;
+		frameRate=30;
+	}
+	if(size=='big'){
+		explosion.scale.x=2;
+		explosion.scale.y=2;
+		frameRate=20;
+	}
 	explosion.animations.add('explode');
-	explosion.animations.play('explode', 20, false);
+	explosion.animations.play('explode', frameRate, false);
+}
+
+function debugOn(child){
+	game.debug.body(child);
 }
