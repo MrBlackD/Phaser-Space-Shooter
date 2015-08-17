@@ -15,11 +15,12 @@ var playState={
 		bullets.setAll('outOfBoundsKill', true);
 		bullets.setAll('checkWorldBounds', true);
 		bullet = bullets.getFirstExists(false);
-		bullets.setAll('width',bullet.width*0.2);
-		bullets.setAll('height',bullet.height*0.20);
+		bullets.setAll('width',bullet.width*0.8);
+		bullets.setAll('height',bullet.height*0.6);
 		bullet = bullets.getFirstExists(false);
 		bullets.setAll('body.width',bullet.width/2);
 		bullets.setAll('body.height',bullet.height);
+
 		asteroids = game.add.group();
 		enemies=game.add.group();
 
@@ -52,9 +53,17 @@ var playState={
 			scrollSpd:4,
 			status:'inProgress'
 		}
+		shakeWorld = 0;
+		shakeWorldMax = 20;
+		shakeWorldTime = 0;
+		shakeWorldTimeMax = 40;
+
+	    
+
 
 		player=game.add.sprite(game.world.centerX,game.world.height+100,'player');
-		
+
+		//player.tint=0x8cb1ff;
 		player.anchor.x=0.5;
 		player.anchor.y=0.5;
 		player.angle=-90;
@@ -64,27 +73,34 @@ var playState={
 
 		player.body.width=player.height;
 		player.body.height=player.width;
-		
-		
-
+				
+		playerFlash=game.add.sprite(0,0,'flash');
+		playerFlash.anchor.x=0.5;
+		playerFlash.anchor.y=0.5;
+		playerFlash.kill();
 		player.stats={
-			speed:200,
+			speed:300,
 			bulletTime:0,
-			bulletSpeed:400,
-			fireRate:400,
+			bulletSpeed:1000,
+			fireRate:100,
 			guns:1,
-			damage:1
+			damage:1,
+			spread:40
 		}
 		game.add.tween(player).to({x:game.world.centerX,y:game.world.centerY}, 1000).start();
+
+		emitter = game.add.emitter(0, 0, 100);
+	    emitter.makeParticles('particles');
+
 		spawn_enemy(5000);
 		timer = game.time.create(false);
 		timer.add(10000,function(){
 			spawn_asteroids();
 		},this);
 		timer.start();
-
 	},
 	update:function(){
+		screenShake();
 		starfield.tilePosition.y += gameinfo.scrollSpd;
 		fire();
 		if(target==0&&timeToSurvive>=0)
@@ -106,7 +122,7 @@ var playState={
 		game.physics.arcade.overlap(enemies, bullets,dmg);
 	},
 	render:function(){
-		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00"); 
+		game.debug.text(game.time.fps || '--', 2, 14, "#00ff00");
 		//game.debug.body(player);
 		//enemies.forEach(debugOn,this,false);
 		//asteroids.forEach(debugOn,this,false);
@@ -118,7 +134,14 @@ var playState={
 }
 
 function dmg(damageTaker,damageDealer){
-	explode(damageDealer.x,damageDealer.y,'small');
+	//explode(damageDealer.x,damageDealer.y,'small');
+	particlesEmitter(damageDealer);
+	damageTaker.tint=0x0751ee;
+	timer = game.time.create(false);
+	timer.add(100,function(){
+		damageTaker.tint=0xFFFFFF;
+	},this);
+	timer.start();
 	if(damageTaker.health==1){
 		explode(game.rnd.integerInRange(damageTaker.x-damageTaker.width/2, damageTaker.x+damageTaker.width/2),game.rnd.integerInRange(damageTaker.y-damageTaker.height/2, damageTaker.y+damageTaker.height/2),'big');
 		
@@ -149,11 +172,17 @@ function fire() {
 		{
 			//  And fire it
 			bullet.reset(player.x, player.y-10);
+			playerFlash.reset(player.x, player.y-15);
 			//bullet.rotation=game.physics.arcade.angleToPointer(player)+90*Math.PI/180;
-
-			bullet.body.velocity.y = -player.stats.bulletSpeed;
+			game.physics.arcade.moveToXY(bullet,bullet.x+game.rnd.integerInRange(-player.stats.spread, player.stats.spread),bullet.y-game.world.height/2,player.stats.bulletSpeed);
             player.stats.bulletTime = game.time.now + player.stats.fireRate;
             shot.play();
+            timer = game.time.create(false);
+			timer.add(15,function(){
+				playerFlash.kill();
+			},this);
+			timer.start();
+            
 		}
 	}
 }
@@ -221,7 +250,7 @@ function asteroid_init(child){
 
 function asteroidsDestroy(asteroid,bullet){
 	
-	if(asteroid.width>40){
+	if(asteroid.width>100){
 		ast=game.add.sprite(asteroid.x+game.rnd.integerInRange(-5, 5),asteroid.y+game.rnd.integerInRange(-5, 5),'asteroid');
 		game.physics.enable(ast, Phaser.Physics.ARCADE);
 		ast.width=asteroid.width/2;
@@ -245,6 +274,7 @@ function asteroidsDestroy(asteroid,bullet){
 		asteroids.add(ast);
 
 	}
+	particlesEmitter(bullet);
 	explode(asteroid.x,asteroid.y);
 	asteroid.kill();
 	bullet.kill();
@@ -379,7 +409,9 @@ function lose(){
 }
 
 function explode(x,y,size){
-	frameRate=20;
+	explosions[game.rnd.integerInRange(0,explosions.length-1)].play();
+	shakeWorldTime = shakeWorldTimeMax;
+	frameRate=30;
 	explosion=game.add.sprite(x,y,'explosion');
 	explosion.anchor.x=0.5;
 	explosion.anchor.y=0.5;
@@ -399,4 +431,34 @@ function explode(x,y,size){
 
 function debugOn(child){
 	game.debug.body(child);
+}
+
+function particlesEmitter(place,min,max,gravity){
+	if(!min)
+		min=5;
+	if(!max)
+		max=10;
+	if(!gravity)
+		gravity=1000;
+	emitter.gravity = gravity;
+	emitter.minParticleSpeed.setTo(-300, 30);
+    emitter.maxParticleSpeed.setTo(300, 100);
+    emitter.minParticleScale = 0.1;
+    emitter.maxParticleScale = 0.5;
+	emitter.x=place.x;
+	emitter.y=place.y;
+	emitter.start(true, 400, null, game.rnd.integerInRange(min,max));
+}
+
+function screenShake(){
+	if (shakeWorldTime > 0) {
+	   var magnitude = ( shakeWorldTime / shakeWorldTimeMax ) * shakeWorldMax;
+	   var rand1 = game.rnd.integerInRange(-magnitude,magnitude);
+	   var rand2 = game.rnd.integerInRange(-magnitude,magnitude);
+	    game.world.setBounds(rand1, rand2, game.width + rand1, game.height + rand2);
+	    shakeWorldTime--;
+	    if (shakeWorldTime == 0) {
+	        game.world.setBounds(0, 0, game.width,game.height); // normalize after shake?
+	    }
+	}
 }
